@@ -41,10 +41,12 @@
 ## 🖼️ Screenshots
 
 ### 🖥️ Application Interface
-<img src="assets/ui_screenshot.png" alt="StocksTracker UI" width="700"/>
+![appinterface](https://github.com/user-attachments/assets/b86b1d12-06ce-4f25-a54f-f9d7b490527a)
+
 
 ### 📄 Generated PDF Report
-<img src="assets/pdf_preview.png" alt="PDF Report Preview" width="700"/>
+![pdf](https://github.com/user-attachments/assets/2e2671f4-d178-4d54-9cc6-aa90ea671932)
+
 
 ---
 
