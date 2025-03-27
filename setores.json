@@ -1,0 +1,17 @@
+{
+    "Tecnologia da Informação": ["AAPL", "MSFT", "NVDA", "CRM", "INTC", "ORCL", "IBM"],
+    "Serviços de Comunicação": ["GOOGL", "META", "NFLX", "DIS", "TMUS", "VZ", "CMCSA", "CHTR"],
+    "Consumo Discricionário": ["AMZN", "TSLA", "HD", "MCD", "NKE", "LOW", "SBUX", "TJX"],
+    "Consumo Básico": ["PG", "KO", "PEP", "WMT", "CL", "MDLZ", "KMB", "KR"],
+    "Energético": ["XOM", "CVX", "BP", "COP", "TOT", "SLB", "EOG", "PSX"],
+    "Financeiro": ["JPM", "BAC", "GS", "WFC", "MS", "AXP", "SCHW", "BLK"],
+    "Imobiliário": ["PLD", "AMT", "SPG", "CCI", "EQIX", "PSA", "WELL", "DLR"],
+    "Indústria": ["BA", "HON", "UPS", "GE", "CAT", "LMT", "MMM", "DE"],
+    "Materiais": ["LIN", "SHW", "NEM", "APD", "ECL", "DD", "MLM", "FCX"],
+    "Cuidados de Saúde": ["JNJ", "PFE", "UNH", "ABBV", "MRK", "TMO", "ABT", "LLY"],
+    "Serviços Públicos": ["NEE", "DUK", "SO", "AEP", "EXC", "SRE", "XEL", "ED"],
+    "Transportes": ["FDX", "DAL", "CSX", "NSC", "UAL", "KSU", "LUV"],
+    "Aeronáutica e Defesa": ["BA", "RTX", "LMT", "TDG", "NOC", "HWM"],
+    "Automóveis": ["TSLA", "GM", "F", "HMC", "TM", "RIVN", "LCID"],
+    "Retail": ["AMZN", "HD", "COST", "TGT", "BBY", "WBA", "LOW"]
+}
