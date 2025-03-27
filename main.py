@@ -1,10 +1,11 @@
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+import customtkinter as ctk
+from tkinter import filedialog, messagebox
 from fpdf import FPDF
 import os
 import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from alpha_vantage.timeseries import TimeSeries
 import time
 import json
@@ -25,6 +26,9 @@ with open("api.enc", "rb") as f:
 
 fernet = Fernet(key)
 ALPHA_VANTAGE_API_KEY = fernet.decrypt(encrypted_api).decode()
+
+# Variável global do canvas para reset
+canvas_preview = None
 
 def gerar_pdf(setor, dias, pasta_destino):
     try:
@@ -48,8 +52,7 @@ def gerar_pdf(setor, dias, pasta_destino):
 
         total = len(tickers)
         progresso = 0
-        progress['value'] = 0
-        progress.update()
+        progress.set(0)
 
         for ticker in tickers:
             try:
@@ -57,16 +60,13 @@ def gerar_pdf(setor, dias, pasta_destino):
 
                 for i in range(12):
                     time.sleep(1)
-                    progress['value'] = progresso / total * 100 + (i + 1) / 12 * (100 / total)
-                    progress.update()
-
+                    progress.set(progresso / total * 100 + (i + 1) / 12 * (100 / total))
 
                 progresso += 1
                 data = data.sort_index().tail(dias)
                 if data.empty:
                     continue
 
-                # Gráfico com preenchimento
                 plt.figure(figsize=(6, 2.5))
                 plt.plot(data.index, data['4. close'], color='red')
                 plt.fill_between(data.index, data['4. close'], color='red', alpha=0.1)
@@ -76,14 +76,12 @@ def gerar_pdf(setor, dias, pasta_destino):
                 plt.ylabel("Preço de Fecho (USD)")
                 plt.grid(True)
 
-
                 grafico_path = os.path.join(pasta_destino, f"{ticker}_graf.png")
                 plt.tight_layout()
                 plt.savefig(grafico_path)
                 plt.close()
 
                 nome_exibir = NOMES_EMPRESAS.get(ticker, ticker)
-                plt.title(f"{nome_exibir} - {dias} dias")
                 pdf.cell(200, 10, txt=f"Empresa: {nome_exibir}", ln=True)
                 pdf.image(grafico_path, x=15, w=180)
                 os.remove(grafico_path)
@@ -93,16 +91,49 @@ def gerar_pdf(setor, dias, pasta_destino):
                 pdf.cell(200, 10, txt=f"Erro ao buscar dados de {ticker}: {str(e)}", ln=True)
 
         pdf.output(caminho_completo)
-        progress['value'] = 100
-        progress.update()
+        progress.set(100)
         messagebox.showinfo("Sucesso", f"PDF salvo em:\n{caminho_completo}")
 
     except Exception as e:
         messagebox.showerror("Erro ao gerar PDF", str(e))
 
 
+def alternar_tema():
+    modo = "light" if tema_switch.get() == 1 else "dark"
+    tema_switch.configure(text="Modo Escuro" if modo == "light" else "Modo Claro")
+    ctk.set_appearance_mode(modo)
 
-# Função chamada ao clicar no botão Analisar
+
+def mostrar_grafico_preview():
+    global canvas_preview
+    for widget in preview_frame.winfo_children():
+        widget.destroy()
+
+    ticker = combo_setor.get()
+    if not ticker:
+        return
+    primeiro_ticker = SETORES.get(ticker, [])[0]
+    if not primeiro_ticker:
+        return
+
+    ts = TimeSeries(key=ALPHA_VANTAGE_API_KEY, output_format='pandas')
+    try:
+        data, _ = ts.get_daily(symbol=primeiro_ticker, outputsize='compact')
+        data = data.sort_index().tail(30)
+        if data.empty:
+            return
+        fig, ax = plt.subplots(figsize=(5, 2.5))
+        ax.plot(data.index, data['4. close'], color='skyblue')
+        ax.set_title(f"{primeiro_ticker} - Últimos 30 dias")
+        ax.set_ylabel("Preço de Fecho")
+        ax.tick_params(axis='x', labelrotation=45)
+        canvas_preview = FigureCanvasTkAgg(fig, master=preview_frame)
+        canvas_preview.draw()
+        canvas_preview.get_tk_widget().pack()
+    except:
+        pass
+
+
 def analisar():
     setor = combo_setor.get()
     dias = entry_dias.get()
@@ -118,82 +149,66 @@ def analisar():
         messagebox.showwarning("Valor inválido", "O campo 'dias' deve ser um número inteiro!")
         return
 
-    # <-- Aqui está a solução real, direta, simples
     threading.Thread(target=gerar_pdf, args=(setor, dias, pasta), daemon=True).start()
 
 
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
 
-# Interface gráfica
-root = tk.Tk()
-root.title("Google Finance BOT")
-root.geometry("560x300")
-root.configure(bg="#B0B6E0")
-root.resizable(False, False)
+app = ctk.CTk()
+app.title("📊 StocksTracker")
+app.geometry("700x600")
 
-# Centralizar janela
-root.update_idletasks()
-sw = root.winfo_screenwidth()
-sh = root.winfo_screenheight()
-w = 560
-h = 300
-x = (sw - w) // 2
-y = (sh - h) // 2
-root.geometry(f"{w}x{h}+{x}+{y}")
+# Header com tema toggle
+top_frame = ctk.CTkFrame(app, corner_radius=15)
+top_frame.pack(pady=10, padx=20, fill='x')
 
-# Instrução
-lbl_instrucao = tk.Label(
-    root,
-    text="Utilize esta janela para gerar um ficheiro pdf com a variação\n"
-         "de um sector de Economia na última semana e nos índices da\n"
-         "Bolsa de Valores",
-    bg="#B0B6E0",
-    font=("Segoe UI", 10),
+titulo = ctk.CTkLabel(top_frame, text="📈 StocksTracker", font=ctk.CTkFont(size=22, weight="bold"))
+titulo.pack(side="left", padx=15, pady=10)
+
+tema_switch = ctk.CTkSwitch(top_frame, text="Modo Claro", command=alternar_tema)
+tema_switch.pack(side="right", padx=15)
+
+# Instruções
+lbl_instrucao = ctk.CTkLabel(
+    app,
+    text="Gere um PDF com a variação do setor econômico nas últimas semanas",
+    font=ctk.CTkFont(size=14),
     justify="center"
 )
 lbl_instrucao.pack(pady=10)
 
-# Frame de entradas
-frame = tk.Frame(root, bg="#B0B6E0")
-frame.pack(pady=5)
+# Área principal
+main_frame = ctk.CTkFrame(app, corner_radius=15)
+main_frame.pack(pady=10, padx=20)
 
-#Setor
-tk.Label(frame, text="Selecione o setor de economia que pretende analisar:", bg="#B0B6E0", font=("Segoe UI", 10)).grid(row=0, column=0, sticky='e', padx=5, pady=5)
-combo_setor = ttk.Combobox(frame, values=list(SETORES.keys()), width=25)
-combo_setor.grid(row=0, column=1, padx=5, pady=5, sticky='w')
+ctk.CTkLabel(main_frame, text="📂 Setor:").grid(row=0, column=0, padx=5, pady=5, sticky='e')
+combo_setor = ctk.CTkOptionMenu(main_frame, values=list(SETORES.keys()), command=lambda _: mostrar_grafico_preview())
+combo_setor.grid(row=0, column=1, padx=5, pady=5)
 
+ctk.CTkLabel(main_frame, text="📅 Dias:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
+entry_dias = ctk.CTkEntry(main_frame, width=100)
+entry_dias.grid(row=1, column=1, padx=5, pady=5)
 
-# Linha 2: Dias
-tk.Label(frame, text="Escolha quantos dias quer analisar:", bg="#B0B6E0", font=("Segoe UI", 10)).grid(row=1, column=0, sticky='e', padx=5, pady=2)
-entry_dias = tk.Entry(frame, width=8, font=("Segoe UI", 10))
-entry_dias.grid(row=1, column=1, padx=5, pady=2, sticky='w')
-
-# Texto centralizado para pasta destino
-tk.Label(root, text="Por favor, escolha uma pasta para guardar o seu ficheiro pdf:", bg="#B0B6E0", font=("Segoe UI", 10)).pack(pady=(10, 0))
-
-# Frame pasta com botão Browse
-frame_pasta = tk.Frame(root, bg="#B0B6E0")
+ctk.CTkLabel(app, text="💾 Escolha uma pasta para salvar o PDF:").pack(pady=(10, 0))
+frame_pasta = ctk.CTkFrame(app)
 frame_pasta.pack(pady=5)
 
+entry_pasta = ctk.CTkEntry(frame_pasta, width=400)
+entry_pasta.pack(side="left", padx=5)
 
-entry_pasta = tk.Entry(frame_pasta, width=35, font=("Segoe UI", 15))
-entry_pasta.pack(side='left', padx=5)
+btn_browse = ctk.CTkButton(frame_pasta, text="📁 Browse", command=lambda: entry_pasta.insert(0, filedialog.askdirectory()))
+btn_browse.pack(side="left")
 
-def escolher_pasta():
-    pasta = filedialog.askdirectory()
-    if pasta:
-        entry_pasta.delete(0, tk.END)
-        entry_pasta.insert(0, pasta)
-
-btn_browse = tk.Button(frame_pasta, text="Browse", font=("Segoe UI", 10), command=escolher_pasta)
-btn_browse.pack(side='left')
-
-# Botão Analisar
-btn_analisar = tk.Button(root, text="Analisar", font=("Segoe UI", 10), command=analisar)
+btn_analisar = ctk.CTkButton(app, text="✔ Analisar", command=analisar)
 btn_analisar.pack(pady=(10, 5))
 
-# Progress Bar
-progress = ttk.Progressbar(root, orient="horizontal", length=400, mode="determinate")
+progress = ctk.CTkProgressBar(app, width=400)
+progress.set(0)
 progress.pack(pady=(5, 15))
 
+# Gráfico Preview
+preview_frame = ctk.CTkFrame(app, corner_radius=10)
+preview_frame.pack_forget()
 
-root.mainloop()
+app.mainloop()
