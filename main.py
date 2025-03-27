@@ -8,16 +8,23 @@ import matplotlib.pyplot as plt
 from alpha_vantage.timeseries import TimeSeries
 import time
 import json
+from cryptography.fernet import Fernet
 import threading
-
-ALPHA_VANTAGE_API_KEY = 'YOUR API KEY'
-
 
 with open("setores.json", "r", encoding="utf-8") as f:
     SETORES = json.load(f)
 
 with open("enterprises_name.json", "r", encoding="utf-8") as f:
     NOMES_EMPRESAS = json.load(f)
+
+with open("secret.key", "rb") as key_file:
+    key = key_file.read()
+
+with open("api.enc", "rb") as f:
+    encrypted_api = f.read()
+
+fernet = Fernet(key)
+ALPHA_VANTAGE_API_KEY = fernet.decrypt(encrypted_api).decode()
 
 def gerar_pdf(setor, dias, pasta_destino):
     try:
@@ -48,8 +55,11 @@ def gerar_pdf(setor, dias, pasta_destino):
             try:
                 data, meta = ts.get_daily(symbol=ticker, outputsize='compact')
 
-                # Progressivo delay de 12 segundos com barra animada
-                time.sleep(12)
+                for i in range(12):
+                    time.sleep(1)
+                    progress['value'] = progresso / total * 100 + (i + 1) / 12 * (100 / total)
+                    progress.update()
+
 
                 progresso += 1
                 data = data.sort_index().tail(dias)
