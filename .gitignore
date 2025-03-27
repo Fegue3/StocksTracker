@@ -1,0 +1,8 @@
+# Ficheiros sensíveis
+secret.key
+api.enc
+
+# Outros comuns
+__pycache__/
+*.pyc
+.env
