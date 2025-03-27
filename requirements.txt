@@ -1,0 +1,7 @@
+pandas
+matplotlib
+requests
+alpha_vantage
+customtkinter
+fpdf
+cryptography
