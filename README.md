@@ -4,7 +4,7 @@
 
 ![last commit](https://img.shields.io/badge/last%20commit-today-blue)
 ![language](https://img.shields.io/badge/python-100%25-blue)
-![languages](https://img.shields.io/badge/libraries-5-important)
+![libraries](https://img.shields.io/badge/libraries-5-important)
 
 **Built with:**
 
@@ -19,6 +19,7 @@
 ## 📌 Table of Contents
 
 - [📖 Overview](#-overview)
+- [🖼️ Screenshots](#️-screenshots)
 - [🚀 Getting Started](#-getting-started)
   - [🔧 Prerequisites](#prerequisites)
   - [💾 Installation](#installation)
@@ -26,7 +27,7 @@
   - [📝 Getting your API Key](#getting-your-api-key)
   - [⚠️ API Limitations](#api-limitations)
 - [⚙️ Usage](#️-usage)
-- [🛠 Libraries](#-libraries)
+- [💪 Libraries](#-libraries)
 - [👨‍💼 Author](#-author)
 
 ---
@@ -34,6 +35,16 @@
 ## 📖 Overview
 
 **StocksTracker** is a Python desktop application that provides financial charts and PDF reports of stock market sectors. It utilizes the Alpha Vantage API and features a modern GUI with light/dark mode, custom visual themes, and multithreaded PDF generation.
+
+---
+
+## 🖼️ Screenshots
+
+### 🖥️ Application Interface
+<img src="assets/ui_screenshot.png" alt="StocksTracker UI" width="700"/>
+
+### 📄 Generated PDF Report
+<img src="assets/pdf_preview.png" alt="PDF Report Preview" width="700"/>
 
 ---
 
@@ -93,7 +104,7 @@ Then follow the graphical interface:
 
 ---
 
-## 🛠 Libraries
+## 💪 Libraries
 
 | Library         | Description                             |
 |-----------------|-----------------------------------------|
@@ -109,6 +120,4 @@ Then follow the graphical interface:
 ## 👨‍💼 Author
 
 Developed by [Fegue3](https://github.com/Fegue3)  
-🔒 Secure. 📈 Insightful. 🧠 Smart.
-
----
+🔐 Secure. 📈 Insightful. 🧠 Smart.
