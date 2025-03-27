@@ -157,7 +157,7 @@ ctk.set_default_color_theme("blue")
 
 app = ctk.CTk()
 app.title("📊 StocksTracker")
-app.geometry("700x600")
+app.geometry("700x400")
 
 # Header com tema toggle
 top_frame = ctk.CTkFrame(app, corner_radius=15)
