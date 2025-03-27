@@ -64,7 +64,7 @@ To run StocksTracker, you will need:
 Install the required libraries using pip:
 
 ```bash
-pip install pandas matplotlib requests alpha_vantage customtkinter fpdf cryptography
+pip install -r requirements.txt
 ```
 
 ---
