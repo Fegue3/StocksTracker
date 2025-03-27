@@ -20,10 +20,10 @@ app.title("📊 StocksTracker")
 app.geometry("700x500")
 
 # === CARREGAMENTO DE DADOS ===
-with open("setores.json", "r", encoding="utf-8") as f:
+with open("data/setores.json", "r", encoding="utf-8") as f:
     SETORES = json.load(f)
 
-with open("enterprises_name.json", "r", encoding="utf-8") as f:
+with open("data/enterprises_name.json", "r", encoding="utf-8") as f:
     NOMES_EMPRESAS = json.load(f)
 
 with open("secret.key", "rb") as key_file:
