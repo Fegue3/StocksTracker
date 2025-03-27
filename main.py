@@ -68,10 +68,11 @@ def gerar_pdf(setor, dias, pasta_destino):
                 nome_exibir = NOMES_EMPRESAS.get(ticker, ticker)
                 app.after(0, lambda nome=nome_exibir: status_label.configure(text=f"Processando: {nome}"))
 
-                data, meta = ts.get_daily(symbol=ticker, outputsize='compact')
+                outputsize = 'full' if dias > 100 else 'compact'
+                data, meta = ts.get_daily(symbol=ticker, outputsize=outputsize)
 
                 for i in range(12):
-                    time.sleep(1)
+                    time.sleep(0.5)
                     progresso_local = progresso / total * 100 + (i + 1) / 12 * (100 / total)
                     app.after(0, lambda v=progresso_local: progress.set(v))
 
@@ -88,9 +89,11 @@ def gerar_pdf(setor, dias, pasta_destino):
                 plt.xlabel("Data")
                 plt.ylabel("Preço de Fecho (USD)")
                 plt.grid(True)
+                plt.xticks(rotation=45)
 
                 grafico_path = os.path.join(pasta_destino, f"{ticker}_graf.png")
                 plt.tight_layout()
+                plt.gcf().autofmt_xdate()
                 plt.savefig(grafico_path)
                 plt.close()
 
