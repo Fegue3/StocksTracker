@@ -13,7 +13,7 @@ import json
 ALPHA_VANTAGE_API_KEY = 'Your API Key'
 
 
-with open("nomes_empresas.json", "r") as f:
+with open("enterprises_name.json", "r") as f:
     NOMES_EMPRESAS = json.load(f)
 
 with open("setores.json", "r") as f:
