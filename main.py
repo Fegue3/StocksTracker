@@ -72,7 +72,7 @@ def gerar_pdf(setor, dias, pasta_destino):
                 data, meta = ts.get_daily(symbol=ticker, outputsize=outputsize)
 
                 for i in range(12):
-                    time.sleep(0.5)
+                    time.sleep(1)
                     progresso_local = progresso / total * 100 + (i + 1) / 12 * (100 / total)
                     app.after(0, lambda v=progresso_local: progress.set(v))
 
@@ -81,21 +81,23 @@ def gerar_pdf(setor, dias, pasta_destino):
                 if data.empty:
                     continue
 
-                plt.figure(figsize=(6, 2.5))
-                plt.plot(data.index, data['4. close'], color='red')
+                plt.figure(figsize=(7, 3))
+                plt.plot(data.index, data['4. close'], color='red', linewidth=1.8)
                 plt.fill_between(data.index, data['4. close'], color='red', alpha=0.1)
                 plt.ylim(data['4. close'].min() * 0.98, data['4. close'].max() * 1.02)
                 plt.title(f"{ticker} - {dias} dias")
                 plt.xlabel("Data")
                 plt.ylabel("Preço de Fecho (USD)")
                 plt.grid(True)
-                plt.xticks(rotation=45)
+
+                # Melhor formatação do eixo X
+                plt.xticks(rotation=30)
+                plt.tight_layout(pad=1)
 
                 grafico_path = os.path.join(pasta_destino, f"{ticker}_graf.png")
-                plt.tight_layout()
-                plt.gcf().autofmt_xdate()
-                plt.savefig(grafico_path)
+                plt.savefig(grafico_path, bbox_inches='tight')
                 plt.close()
+
 
                 pdf.cell(200, 10, txt=f"Empresa: {nome_exibir}", ln=True)
                 pdf.image(grafico_path, x=15, w=180)
