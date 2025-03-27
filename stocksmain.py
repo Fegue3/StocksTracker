@@ -8,16 +8,16 @@ import matplotlib.pyplot as plt
 from alpha_vantage.timeseries import TimeSeries
 import time
 import json
+import threading
 
-# SUA API KEY AQUI:
-ALPHA_VANTAGE_API_KEY = 'Your API Key'
+ALPHA_VANTAGE_API_KEY = '6URUWRBGBU1BSUBU'
 
 
-with open("enterprises_name.json", "r") as f:
-    NOMES_EMPRESAS = json.load(f)
-
-with open("setores.json", "r") as f:
+with open("setores.json", "r", encoding="utf-8") as f:
     SETORES = json.load(f)
+
+with open("enterprises_name.json", "r", encoding="utf-8") as f:
+    NOMES_EMPRESAS = json.load(f)
 
 def gerar_pdf(setor, dias, pasta_destino):
     try:
@@ -40,19 +40,16 @@ def gerar_pdf(setor, dias, pasta_destino):
         pdf.ln(10)
 
         total = len(tickers)
+        progresso = 0
         progress['value'] = 0
         progress.update()
-        progresso = 0
 
         for ticker in tickers:
             try:
                 data, meta = ts.get_daily(symbol=ticker, outputsize='compact')
 
                 # Progressivo delay de 12 segundos com barra animada
-                for i in range(12):
-                    time.sleep(1)
-                    progress['value'] = ((progresso + (i+1)/12) / total) * 100
-                    progress.update()
+                time.sleep(12)
 
                 progresso += 1
                 data = data.sort_index().tail(dias)
@@ -68,6 +65,8 @@ def gerar_pdf(setor, dias, pasta_destino):
                 plt.xlabel("Data")
                 plt.ylabel("Preço de Fecho (USD)")
                 plt.grid(True)
+
+
                 grafico_path = os.path.join(pasta_destino, f"{ticker}_graf.png")
                 plt.tight_layout()
                 plt.savefig(grafico_path)
@@ -109,7 +108,9 @@ def analisar():
         messagebox.showwarning("Valor inválido", "O campo 'dias' deve ser um número inteiro!")
         return
 
-    gerar_pdf(setor, dias, pasta)
+    # <-- Aqui está a solução real, direta, simples
+    threading.Thread(target=gerar_pdf, args=(setor, dias, pasta), daemon=True).start()
+
 
 
 # Interface gráfica
