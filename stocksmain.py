@@ -10,7 +10,7 @@ import time
 import json
 import threading
 
-ALPHA_VANTAGE_API_KEY = '6URUWRBGBU1BSUBU'
+ALPHA_VANTAGE_API_KEY = 'YOUR API KEY'
 
 
 with open("setores.json", "r", encoding="utf-8") as f:
