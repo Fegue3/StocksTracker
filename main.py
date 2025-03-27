@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, Toplevel
 from fpdf import FPDF
 import os
 import datetime
@@ -17,7 +17,7 @@ ctk.set_default_color_theme("blue")
 
 app = ctk.CTk()
 app.title("📊 StocksTracker")
-app.geometry("700x500")
+app.geometry("750x600")
 
 # === CARREGAMENTO DE DADOS ===
 with open("data/setores.json", "r", encoding="utf-8") as f:
@@ -36,22 +36,25 @@ fernet = Fernet(key)
 ALPHA_VANTAGE_API_KEY = fernet.decrypt(encrypted_api).decode()
 
 # === FUNÇÃO GERAR PDF ===
-def gerar_pdf(setor, dias, pasta_destino):
+def gerar_pdf(setores, dias, pasta_destino):
     try:
-        tickers = SETORES.get(setor, [])
+        tickers = []
+        for setor in setores:
+            tickers.extend(SETORES.get(setor, []))
+
         if not tickers:
-            raise ValueError("Setor não encontrado.")
+            raise ValueError("Nenhum ticker encontrado para os setores selecionados.")
 
         ts = TimeSeries(key=ALPHA_VANTAGE_API_KEY, output_format='pandas')
         data_hoje = datetime.date.today().strftime('%d-%m-%Y')
-        nome_arquivo = f"Relatorio_{setor.replace(' ', '_')}_{data_hoje}.pdf"
+        nome_arquivo = f"Relatorio_{'_'.join(setores)}_{data_hoje}.pdf"
         caminho_completo = os.path.join(pasta_destino, nome_arquivo)
 
         pdf = FPDF()
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
         pdf.set_font("Arial", size=12)
-        pdf.cell(200, 10, txt=f"Relatório Econômico - Setor: {setor}", ln=True, align='C')
+        pdf.cell(200, 10, txt=f"Relatório Econômico - Setores: {', '.join(setores)}", ln=True, align='C')
         pdf.cell(200, 10, txt=f"Dias analisados: {dias}", ln=True, align='C')
         pdf.cell(200, 10, txt=f"Data do Relatório: {data_hoje}", ln=True, align='C')
         pdf.ln(10)
@@ -71,11 +74,6 @@ def gerar_pdf(setor, dias, pasta_destino):
                 outputsize = 'full' if dias > 100 else 'compact'
                 data, meta = ts.get_daily(symbol=ticker, outputsize=outputsize)
 
-                for i in range(12):
-                    time.sleep(1)
-                    progresso_local = progresso / total * 100 + (i + 1) / 12 * (100 / total)
-                    app.after(0, lambda v=progresso_local: progress.set(v))
-
                 progresso += 1
                 data = data.sort_index().tail(dias)
                 if data.empty:
@@ -89,15 +87,12 @@ def gerar_pdf(setor, dias, pasta_destino):
                 plt.xlabel("Data")
                 plt.ylabel("Preço de Fecho (USD)")
                 plt.grid(True)
-
-                # Melhor formatação do eixo X
                 plt.xticks(rotation=30)
                 plt.tight_layout(pad=1)
 
                 grafico_path = os.path.join(pasta_destino, f"{ticker}_graf.png")
                 plt.savefig(grafico_path, bbox_inches='tight')
                 plt.close()
-
 
                 pdf.cell(200, 10, txt=f"Empresa: {nome_exibir}", ln=True)
                 pdf.image(grafico_path, x=15, w=180)
@@ -125,12 +120,24 @@ def alternar_tema():
     tema_switch.configure(text="Modo Escuro" if modo == "light" else "Modo Claro")
     ctk.set_appearance_mode(modo)
 
+def toggle_dropdown():
+    if dropdown_frame.winfo_ismapped():
+        dropdown_frame.pack_forget()
+    else:
+        dropdown_frame.configure(fg_color=dropdown_container.cget("fg_color"))
+        dropdown_frame.pack(pady=(5, 0), anchor='w')
+
+def atualizar_botao_setores():
+    count = sum(var.get() for var in check_vars.values())
+    texto = f"Selecionar Setores ({count})" if count else "Selecionar Setores"
+    setores_btn.configure(text=texto)
+
 def analisar():
-    setor = combo_setor.get()
+    setores_selecionados = [setor for setor, var in check_vars.items() if var.get()]
     dias = entry_dias.get()
     pasta = entry_pasta.get()
 
-    if not setor or not dias or not pasta:
+    if not setores_selecionados or not dias or not pasta:
         messagebox.showwarning("Campos obrigatórios", "Preencha todos os campos!")
         return
 
@@ -140,7 +147,7 @@ def analisar():
         messagebox.showwarning("Valor inválido", "O campo 'dias' deve ser um número inteiro!")
         return
 
-    threading.Thread(target=gerar_pdf, args=(setor, dias, pasta), daemon=True).start()
+    threading.Thread(target=gerar_pdf, args=(setores_selecionados, dias, pasta), daemon=True).start()
 
 # === INTERFACE ===
 top_frame = ctk.CTkFrame(app, corner_radius=15)
@@ -152,21 +159,36 @@ titulo.pack(side="left", padx=15, pady=10)
 tema_switch = ctk.CTkSwitch(top_frame, text="Modo Claro", command=alternar_tema)
 tema_switch.pack(side="right", padx=15)
 
-lbl_instrucao = ctk.CTkLabel(app, text="Gere um PDF com a variação do setor econômico nas últimas semanas", font=ctk.CTkFont(size=14), justify="center")
+lbl_instrucao = ctk.CTkLabel(app, text="Gere um PDF com a variação dos setores econômicos nas últimas semanas", font=ctk.CTkFont(size=14), justify="center")
 lbl_instrucao.pack(pady=10)
 
 main_frame = ctk.CTkFrame(app, corner_radius=15)
 main_frame.pack(pady=10, padx=20)
 
-ctk.CTkLabel(main_frame, text="📂 Setor:").grid(row=0, column=0, padx=5, pady=5, sticky='e')
-combo_setor = ctk.CTkOptionMenu(main_frame, values=list(SETORES.keys()))
-combo_setor.grid(row=0, column=1, padx=5, pady=5)
+ctk.CTkLabel(main_frame, text="📂 Setores:").grid(row=0, column=0, padx=5, pady=5, sticky='ne')
+
+dropdown_container = ctk.CTkFrame(main_frame, fg_color=main_frame.cget("fg_color"))
+dropdown_container.grid(row=0, column=1, padx=5, pady=5, sticky='nw')
+
+setores_btn = ctk.CTkButton(dropdown_container, text="Selecionar Setores", command=toggle_dropdown)
+setores_btn.pack(anchor='w')
+
+dropdown_frame = ctk.CTkFrame(dropdown_container, fg_color=main_frame.cget("fg_color"))
+dropdown_frame.pack_forget()
+
+check_vars = {}
+for setor in SETORES:
+    var = ctk.BooleanVar()
+    var.trace_add("write", lambda *_, v=var: atualizar_botao_setores())
+    chk = ctk.CTkCheckBox(dropdown_frame, text=setor, variable=var)
+    chk.pack(anchor='w', padx=10)
+    check_vars[setor] = var
 
 ctk.CTkLabel(main_frame, text="📅 Dias:").grid(row=1, column=0, padx=5, pady=5, sticky='e')
 entry_dias = ctk.CTkEntry(main_frame, width=100)
-entry_dias.grid(row=1, column=1, padx=5, pady=5)
+entry_dias.grid(row=1, column=1, padx=5, pady=5, sticky='w')
 
-ctk.CTkLabel(app, text="💾 Escolha uma pasta para salvar o PDF:").pack(pady=(10, 0))
+ctk.CTkLabel(app, text="📀 Escolha uma pasta para salvar o PDF:").pack(pady=(10, 0))
 frame_pasta = ctk.CTkFrame(app)
 frame_pasta.pack(pady=5)
 
