@@ -1,15 +1,13 @@
 import customtkinter as ctk
-from tkinter import filedialog, messagebox, Toplevel
-from PIL import Image, ImageTk
-from fpdf import FPDF
+from tkinter import filedialog, messagebox
 import os
 import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
-import time
 import json
 import threading
+from fpdf import FPDF
 
 # === INICIALIZA A JANELA ===
 ctk.set_appearance_mode("dark")
@@ -26,12 +24,9 @@ with open("data/setores.json", "r", encoding="utf-8") as f:
 with open("data/enterprises_name.json", "r", encoding="utf-8") as f:
     NOMES_EMPRESAS = json.load(f)
 
-
-# ALPHA_VANTAGE_API_KEY não é mais necessário com yfinance
-
 # === FUNÇÃO GERAR PDF ===
 def gerar_pdf(setores, dias, pasta_destino):
-    comparacao_df = pd.DataFrame()  # armazenar médias por setor
+    comparacao_df = pd.DataFrame()
     try:
         tickers = []
         for setor in setores:
@@ -40,7 +35,6 @@ def gerar_pdf(setores, dias, pasta_destino):
         if not tickers:
             raise ValueError("Nenhum ticker encontrado para os setores selecionados.")
 
-        # yfinance não precisa de API key
         data_hoje = datetime.date.today().strftime('%d-%m-%Y')
         nome_arquivo = f"Relatorio_{'_'.join(setores)}_{data_hoje}.pdf"
         caminho_completo = os.path.join(pasta_destino, nome_arquivo)
@@ -54,29 +48,23 @@ def gerar_pdf(setores, dias, pasta_destino):
         pdf.cell(200, 10, txt=f"Data do Relatório: {data_hoje}", ln=True, align='C')
         pdf.ln(10)
 
-        total = len(tickers)
-        progresso = 0
-
         app.after(0, lambda: btn_analisar.configure(state="disabled"))
         app.after(0, lambda: progress.set(0))
         app.after(0, lambda: status_label.configure(text="Iniciando análise..."))
 
         for ticker in tickers:
             try:
-                setor_atual = next((s for s in setores if ticker in SETORES[s]), None)
                 nome_exibir = NOMES_EMPRESAS.get(ticker, ticker)
                 app.after(0, lambda nome=nome_exibir: status_label.configure(text=f"Processando: {nome}"))
 
-                outputsize = 'full' if dias > 100 else 'compact'
                 data = yf.Ticker(ticker).history(period=f"{dias}d")
-
-                progresso += 1
                 data = data[['Close']]
                 data.columns = ['4. close']
                 comparacao_df[ticker] = data['4. close']
                 if data.empty:
                     continue
 
+                plt.ioff()
                 plt.figure(figsize=(7, 3))
                 plt.plot(data.index, data['4. close'], color='red', linewidth=1.8)
                 plt.fill_between(data.index, data['4. close'], color='red', alpha=0.1)
@@ -94,43 +82,58 @@ def gerar_pdf(setores, dias, pasta_destino):
 
                 pdf.cell(200, 10, txt=f"Empresa: {nome_exibir}", ln=True)
                 pdf.image(grafico_path, x=15, w=180)
-                os.remove(grafico_path)
                 pdf.ln(5)
+                os.remove(grafico_path)
 
             except Exception as e:
                 pdf.cell(200, 10, txt=f"Erro ao buscar dados de {ticker}: {str(e)}", ln=True)
 
         if not comparacao_df.empty:
-            media_por_data = comparacao_df.mean(axis=1)
-            plt.figure(figsize=(7, 3))
+            # Comparação geral
+            plt.ioff()
+            plt.figure(figsize=(7, 4 if len(setores) > 1 and len(comparacao_df.columns) > 1 else 3))
             for ticker in comparacao_df.columns:
                 plt.plot(comparacao_df.index, comparacao_df[ticker], label=ticker)
             plt.legend(fontsize=8)
-            plt.title('Comparação de Preço Médio entre Setores')
+            plt.title('Comparação Geral entre Empresas Selecionadas')
             plt.xlabel('Data')
-            plt.ylabel('Preço Médio (USD)')
+            plt.ylabel('Preço de Fecho (USD)')
             plt.grid(True)
             plt.xticks(rotation=30)
             plt.tight_layout()
-            comparacao_path = os.path.join(pasta_destino, "comparacao_setores.png")
+            comparacao_path = os.path.join(pasta_destino, "comparacao_geral.png")
             plt.savefig(comparacao_path, bbox_inches='tight')
             plt.close()
-            pdf.add_page()
-            pdf.cell(200, 10, txt="Comparação Geral entre Setores", ln=True, align='C')
+            pdf.cell(200, 10, txt="Comparação Geral entre Empresas", ln=True, align='C')
             pdf.image(comparacao_path, x=15, w=180)
+            pdf.ln(5)
+            os.remove(comparacao_path)
 
-        # Exibir gráfico na interface antes de exportar
-        if 'comparacao_path' in locals() and os.path.exists(comparacao_path):
-            import tkinter as tk
-            preview_window = Toplevel()
-            preview_window.title("Pré-visualização: Comparação entre Setores")
-            img = Image.open(comparacao_path)
-            img = img.resize((700, 300))
-            photo = ImageTk.PhotoImage(img)
-            label_img = tk.Label(preview_window, image=photo)
-            label_img.image = photo
-            label_img.pack(padx=10, pady=10)
-            preview_window.after(5000, preview_window.destroy)  # auto fecha após 5s
+            # Comparações por setor (caso tenha mais de um)
+            if len(setores) > 1:
+                pdf.cell(200, 10, txt="Comparações por Setor", ln=True, align='C')
+                for setor in setores:
+                    tickers_setor = SETORES.get(setor, [])
+                    tickers_presentes = [t for t in tickers_setor if t in comparacao_df.columns]
+                    if len(tickers_presentes) < 2:
+                        continue
+                    plt.figure(figsize=(7, 3))
+                    for t in tickers_presentes:
+                        plt.plot(comparacao_df.index, comparacao_df[t], label=t)
+                    plt.legend(fontsize=8)
+                    plt.title(f'Comparação dentro do setor: {setor}')
+                    plt.xlabel('Data')
+                    plt.ylabel('Preço de Fecho (USD)')
+                    plt.grid(True)
+                    plt.xticks(rotation=30)
+                    plt.tight_layout()
+                    setor_path = os.path.join(pasta_destino, f"comparacao_{setor.replace(' ', '_')}.png")
+                    plt.savefig(setor_path, bbox_inches='tight')
+                    plt.close()
+                    pdf.cell(200, 10, txt=f"Comparação - {setor}", ln=True, align='C')
+                    pdf.image(setor_path, x=15, w=180)
+                    pdf.ln(5)
+                    os.remove(setor_path)
 
         pdf.output(caminho_completo)
         app.after(0, lambda: progress.set(100))
@@ -157,13 +160,11 @@ def toggle_dropdown():
         dropdown_frame.configure(fg_color=dropdown_container.cget("fg_color"))
         dropdown_frame.pack(pady=(5, 0), anchor='w')
         empresa_label.pack(anchor='w', pady=(5, 5))
-        
 
 def atualizar_botao_setores():
     count = sum(var.get() for var in check_vars.values())
     texto = f"Selecionar Setores ({count})" if count else "Selecionar Setores"
     setores_btn.configure(text=texto)
-
     total_empresas = sum(len(SETORES[setor]) for setor, var in check_vars.items() if var.get())
     empresa_label.configure(text=f"Total de empresas selecionadas: {total_empresas}")
 
@@ -209,7 +210,6 @@ setores_btn = ctk.CTkButton(dropdown_container, text="Selecionar Setores", comma
 setores_btn.pack(anchor='w')
 
 dropdown_frame = ctk.CTkFrame(dropdown_container, fg_color=main_frame.cget("fg_color"))
-empresa_label = ctk.CTkLabel(dropdown_frame, text="Total de empresas selecionadas: 0")
 empresa_label = ctk.CTkLabel(dropdown_frame, text="Total de empresas selecionadas: 0", anchor='w', font=ctk.CTkFont(size=13, weight="bold"))
 empresa_label.pack(anchor='w', padx=10, pady=(5, 5))
 dropdown_frame.pack_forget()
