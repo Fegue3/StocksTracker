@@ -1,7 +1,7 @@
-pandas
-matplotlib
-requests
-alpha_vantage
-customtkinter
 fpdf
-cryptography
+scikit-learn
+pandas
+numpy
+matplotlib
+yfinance
+customtkinter
