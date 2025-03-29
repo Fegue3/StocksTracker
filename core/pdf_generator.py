@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 from fpdf import FPDF
 from core.indicadores import calcular_sma, calcular_ema, calcular_rsi
+from core.prediction_ai import adicionar_previsao_pdf
 
 def gerar_pdf(setores, dias, pasta_destino, SETORES, NOMES_EMPRESAS, indicadores_vars, callback_ui):
     comparacao_df = pd.DataFrame()
@@ -95,8 +96,10 @@ def gerar_pdf(setores, dias, pasta_destino, SETORES, NOMES_EMPRESAS, indicadores
 
                 pdf.cell(200, 10, txt=f"Empresa: {nome_exibir}", ln=True)
                 pdf.image(grafico_path, x=15, w=180)
-                pdf.ln(5)
+                pdf.ln(10)
                 os.remove(grafico_path)
+                if indicadores_vars.get("IA") and indicadores_vars["IA"].get():
+                     adicionar_previsao_pdf(pdf, data.reset_index(), nome_exibir)
 
             except Exception as e:
                 pdf.cell(200, 10, txt=f"Erro ao buscar dados de {ticker}: {str(e)}", ln=True)
