@@ -9,6 +9,7 @@ import json
 import threading
 from fpdf import FPDF
 
+
 # === INICIALIZA A JANELA ===
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -17,6 +18,7 @@ app = ctk.CTk()
 app.title("📊 StocksTracker")
 app.geometry("750x600")
 
+
 # === CARREGAMENTO DE DADOS ===
 with open("data/setores.json", "r", encoding="utf-8") as f:
     SETORES = json.load(f)
@@ -24,9 +26,32 @@ with open("data/setores.json", "r", encoding="utf-8") as f:
 with open("data/enterprises_name.json", "r", encoding="utf-8") as f:
     NOMES_EMPRESAS = json.load(f)
 
+indicadores_vars = {
+    "SMA": ctk.BooleanVar(value=True),
+    "EMA": ctk.BooleanVar(value=True),
+    "RSI": ctk.BooleanVar(value=False),
+}
+
+def calcular_sma(df, window=14):
+    return df['Close'].rolling(window=window).mean()
+
+def calcular_ema(df, window=14):
+    return df['Close'].ewm(span=window, adjust=False).mean()
+
+def calcular_rsi(df, window=14):
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=window).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=window).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+
+
 # === FUNÇÃO GERAR PDF ===
 def gerar_pdf(setores, dias, pasta_destino):
     comparacao_df = pd.DataFrame()
+    usar_sma = indicadores_vars["SMA"].get()
+    usar_ema = indicadores_vars["EMA"].get()
+    usar_rsi = indicadores_vars["RSI"].get()
     try:
         tickers = []
         for setor in setores:
@@ -58,21 +83,56 @@ def gerar_pdf(setores, dias, pasta_destino):
                 app.after(0, lambda nome=nome_exibir: status_label.configure(text=f"Processando: {nome}"))
 
                 data = yf.Ticker(ticker).history(period=f"{dias}d")
-                data = data[['Close']]
-                data.columns = ['4. close']
-                comparacao_df[ticker] = data['4. close']
                 if data.empty:
                     continue
 
+                data['Close'] = data['Close'].fillna(method='ffill')
+                comparacao_df[ticker] = data['Close']
+
+                # Cálculos dos indicadores
+                if usar_sma:
+                    data['SMA'] = calcular_sma(data, window=14)
+                if usar_ema:
+                    data['EMA'] = calcular_ema(data, window=14)
+                if usar_rsi:
+                    data['RSI'] = calcular_rsi(data, window=14)
+
+                # Gráfico
                 plt.ioff()
-                plt.figure(figsize=(7, 3))
-                plt.plot(data.index, data['4. close'], color='red', linewidth=1.8)
-                plt.fill_between(data.index, data['4. close'], color='red', alpha=0.1)
-                plt.ylim(data['4. close'].min() * 0.98, data['4. close'].max() * 1.02)
-                plt.title(f"{ticker} - {dias} dias")
-                plt.xlabel("Data")
-                plt.ylabel("Preço de Fecho (USD)")
-                plt.grid(True)
+                fig, axs = plt.subplots(2 if usar_rsi else 1, 1, figsize=(7, 4 if usar_rsi else 3), sharex=True)
+                ax1 = axs[0] if usar_rsi else axs
+
+                # Calcula os limites para o gráfico
+                ymin = data['Close'].min() * 0.98
+                ymax = data['Close'].max() * 1.02
+                ax1.set_ylim(ymin, ymax)
+
+                # Linha de fecho e sombra
+                ax1.plot(data.index, data['Close'], label='Fecho', color='red', linewidth=1.8)
+                ax1.fill_between(data.index, data['Close'], ymin, color='red', alpha=0.1)
+
+                # Indicadores, se selecionados
+                if usar_sma:
+                    ax1.plot(data.index, data['SMA'], label='SMA 14', color='deepskyblue')
+                if usar_ema:
+                    ax1.plot(data.index, data['EMA'], label='EMA 14', color='orange', linewidth=2)
+
+                ax1.set_title(f"{ticker} - {dias} dias")
+                ax1.set_ylabel("Preço de Fecho (USD)")
+                ax1.legend(loc = 'upper left')
+                ax1.set_xlabel("Data")
+                ax1.grid(True)
+
+                # RSI (se ativo)
+                if usar_rsi:
+                    ax2 = axs[1]
+                    ax2.plot(data.index, data['RSI'], label='RSI 14', color='purple')
+                    ax2.axhline(70, color='red', linestyle='--')
+                    ax2.axhline(30, color='green', linestyle='--')
+                    ax2.set_ylabel("RSI")
+                    ax2.legend()
+                    ax2.grid(True)
+
                 plt.xticks(rotation=30)
                 plt.tight_layout(pad=1)
 
@@ -89,7 +149,6 @@ def gerar_pdf(setores, dias, pasta_destino):
                 pdf.cell(200, 10, txt=f"Erro ao buscar dados de {ticker}: {str(e)}", ln=True)
 
         if not comparacao_df.empty:
-            # Comparação geral
             plt.ioff()
             plt.figure(figsize=(7, 4 if len(setores) > 1 and len(comparacao_df.columns) > 1 else 3))
             for ticker in comparacao_df.columns:
@@ -109,7 +168,6 @@ def gerar_pdf(setores, dias, pasta_destino):
             pdf.ln(5)
             os.remove(comparacao_path)
 
-            # Comparações por setor (caso tenha mais de um)
             if len(setores) > 1:
                 pdf.cell(200, 10, txt="Comparações por Setor", ln=True, align='C')
                 for setor in setores:
@@ -186,7 +244,11 @@ def analisar():
     threading.Thread(target=gerar_pdf, args=(setores_selecionados, dias, pasta), daemon=True).start()
 
 # === INTERFACE ===
-top_frame = ctk.CTkFrame(app, corner_radius=15)
+
+scroll_frame = ctk.CTkScrollableFrame(app, corner_radius=20, fg_color="transparent")
+scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+top_frame = ctk.CTkFrame(scroll_frame, corner_radius=15)
 top_frame.pack(pady=10, padx=20, fill='x')
 
 titulo = ctk.CTkLabel(top_frame, text="📈 StocksTracker", font=ctk.CTkFont(size=22, weight="bold"))
@@ -195,10 +257,10 @@ titulo.pack(side="left", padx=15, pady=10)
 tema_switch = ctk.CTkSwitch(top_frame, text="Modo Claro", command=alternar_tema)
 tema_switch.pack(side="right", padx=15)
 
-lbl_instrucao = ctk.CTkLabel(app, text="Gere um PDF com a variação dos setores econômicos nas últimas semanas", font=ctk.CTkFont(size=14), justify="center")
+lbl_instrucao = ctk.CTkLabel(scroll_frame, text="Gere um PDF com a variação dos setores econômicos nas últimas semanas", font=ctk.CTkFont(size=14), justify="center")
 lbl_instrucao.pack(pady=10)
 
-main_frame = ctk.CTkFrame(app, corner_radius=15)
+main_frame = ctk.CTkFrame(scroll_frame, corner_radius=15)
 main_frame.pack(pady=10, padx=20)
 
 ctk.CTkLabel(main_frame, text="📂 Setores:").grid(row=0, column=0, padx=5, pady=5, sticky='ne')
@@ -226,8 +288,22 @@ ctk.CTkLabel(main_frame, text="📅 Dias:").grid(row=1, column=0, padx=5, pady=5
 entry_dias = ctk.CTkEntry(main_frame, width=100)
 entry_dias.grid(row=1, column=1, padx=5, pady=5, sticky='w')
 
-ctk.CTkLabel(app, text="📀 Escolha uma pasta para salvar o PDF:").pack(pady=(10, 0))
-frame_pasta = ctk.CTkFrame(app)
+# Indicadores Técnicos - Centralizado e compacto
+indicadores_frame = ctk.CTkFrame(scroll_frame, corner_radius=15, fg_color="transparent")
+indicadores_frame.pack(pady=(5, 10))
+
+linha_indicadores = ctk.CTkFrame(indicadores_frame, fg_color="transparent")
+linha_indicadores.pack(anchor='center', padx=10, pady=10)
+
+# Label + checkboxes lado a lado
+ctk.CTkLabel(linha_indicadores, text="📈 Indicadores Técnicos:", font=ctk.CTkFont(size=14, weight="bold")).pack(side="left", padx=(0, 10))
+
+for nome, var in indicadores_vars.items():
+    chk = ctk.CTkCheckBox(linha_indicadores, text=nome, variable=var)
+    chk.pack(side="left", padx=8)
+
+ctk.CTkLabel(scroll_frame, text="📀 Escolha uma pasta para salvar o PDF:").pack(pady=(10, 0))
+frame_pasta = ctk.CTkFrame(scroll_frame)
 frame_pasta.pack(pady=5)
 
 entry_pasta = ctk.CTkEntry(frame_pasta, width=400)
@@ -236,14 +312,14 @@ entry_pasta.pack(side="left", padx=5)
 btn_browse = ctk.CTkButton(frame_pasta, text="📁 Browse", command=lambda: entry_pasta.insert(0, filedialog.askdirectory()))
 btn_browse.pack(side="left")
 
-btn_analisar = ctk.CTkButton(app, text="✔ Analisar", command=analisar)
+btn_analisar = ctk.CTkButton(scroll_frame, text="✔ Analisar", command=analisar)
 btn_analisar.pack(pady=(10, 5))
 
-progress = ctk.CTkProgressBar(app, width=400)
+progress = ctk.CTkProgressBar(scroll_frame, width=400)
 progress.set(0)
 progress.pack(pady=(5, 10))
 
-status_label = ctk.CTkLabel(app, text="")
+status_label = ctk.CTkLabel(scroll_frame, text="")
 status_label.pack()
 
 def fechar_dropdown(event):
