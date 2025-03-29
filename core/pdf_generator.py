@@ -45,7 +45,7 @@ def gerar_pdf(setores, dias, pasta_destino, SETORES, NOMES_EMPRESAS, indicadores
                 if data.empty:
                     continue
 
-                data['Close'] = data['Close'].fillna(method='ffill')
+                data['Close'] = data['Close'].ffill()
                 comparacao_df[ticker] = data['Close']
 
                 if usar_sma:
