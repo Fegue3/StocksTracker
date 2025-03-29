@@ -15,14 +15,13 @@ def iniciar_app():
     app = ctk.CTk()
     app.title("📊 StocksTracker")
     app.geometry("750x600")
-
     check_vars = {}
     indicadores_vars = {
         "SMA": ctk.BooleanVar(value=True),
         "EMA": ctk.BooleanVar(value=True),
         "RSI": ctk.BooleanVar(value=False),
+         "IA": ctk.BooleanVar(value=True)
     }
-    incluir_ai = ctk.BooleanVar(value=True)
 
     scroll_frame = ctk.CTkScrollableFrame(app, corner_radius=20, fg_color="transparent")
     scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
@@ -76,12 +75,6 @@ def iniciar_app():
     for nome, var in indicadores_vars.items():
         chk = ctk.CTkCheckBox(linha_indicadores, text=nome, variable=var)
         chk.pack(side="left", padx=8)
-
-    ctk.CTkLabel(main_frame, text="🤖 IA:").grid(row=2, column=0, padx=5, pady=5, sticky='ne')
-    check_ai = ctk.CTkCheckBox(main_frame, text="", variable=incluir_ai, onvalue=True, offvalue=False)
-    check_ai.grid(row=2, column=1, padx=5, pady=5, sticky='nw')
-    check_ai.select()
-
 
     ctk.CTkLabel(scroll_frame, text="📀 Escolha uma pasta para salvar o PDF:").pack(pady=(10, 0))
     frame_pasta = ctk.CTkFrame(scroll_frame)
