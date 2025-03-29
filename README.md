@@ -43,10 +43,15 @@
 ## 🖼️ Screenshots
 
 ### 🖥️ Application Interface
-![appinterface](https://github.com/user-attachments/assets/b86b1d12-06ce-4f25-a54f-f9d7b490527a)
+![GUI](https://github.com/user-attachments/assets/74d9627c-66d6-423f-8855-3d0f1bdf58f7)
+
 
 ### 📄 Generated PDF Report
-![pdf](https://github.com/user-attachments/assets/2e2671f4-d178-4d54-9cc6-aa90ea671932)
+![pdf](https://github.com/user-attachments/assets/6cf35f3e-54fd-43e6-ac14-0997894142c4)
+
+### 🤖 AI Report
+![AI](https://github.com/user-attachments/assets/0f3b7671-7869-4ec4-92ad-665d1e752d0b)
+
 
 ---
 
